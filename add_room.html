@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Add Room — Hostel</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Add Room</div></div></div>
+  <nav class="nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="view_rooms.html">View Rooms</a>
+    <a href="admin_login.html">Admin Login</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="card" style="max-width:480px;">
+    <h2>Add New Room (Admin)</h2>
+    <p class="small">You must be logged in as admin. If not, please <a href="admin_login.html">login</a>.</p>
+
+    <form id="roomForm">
+      <label for="room_no">Room Number</label>
+      <input id="room_no" type="text" placeholder="e.g. A101" required>
+
+      <label for="capacity">Capacity</label>
+      <input id="capacity" type="number" placeholder="e.g. 4" required min="1">
+
+      <div style="margin-top:12px;">
+        <button class="button" type="submit">Add Room</button>
+      </div>
+    </form>
+
+    <div id="msg" class="mt-8" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+
+document.getElementById('roomForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('msg'); msg.style.display='none';
+  const token = localStorage.getItem('token');
+  if (!token) { msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='You must be logged in as admin.'; return; }
+
+  const payload = {
+    room_no: document.getElementById('room_no').value.trim(),
+    capacity: parseInt(document.getElementById('capacity').value)
+  };
+
+  try {
+    const res = await fetch(API + '/add-room', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    msg.style.display='inline-block'; msg.className = res.ok ? 'msg ok' : 'msg err'; msg.innerText = text;
+    if (res.ok) document.getElementById('roomForm').reset();
+  } catch (err) {
+    msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='Network error';
+  }
+});
+</script>
+</body>
+</html>

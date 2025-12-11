@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Complaints — Hostel</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Complaints</div></div></div>
+  <nav class="nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="student_login.html">Student Login</a>
+    <a href="admin_login.html">Admin Login</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="card" style="max-width:720px">
+    <h2>Submit Complaint (Student)</h2>
+    <p class="small">Students must be logged in. You can also <a href="student_profile.html">change your password</a> after logging in.</p>
+
+    <form id="complaintForm">
+      <label for="ctype">Type</label>
+      <input id="ctype" placeholder="Plumbing, Electrical, Food, Other" required>
+      <label for="desc">Description</label>
+      <textarea id="desc" rows="4" required></textarea>
+      <div style="margin-top:12px;">
+        <button class="button" type="submit">Add Complaint</button>
+      </div>
+    </form>
+
+    <div id="msg" class="mt-8" style="display:none"></div>
+
+    <h2 style="margin-top:20px">All Complaints (Admin View)</h2>
+    <p class="small msg err" id="auth-msg" style="display:none">Admin token required to view complaints list.</p> <div style="margin-bottom:8px">
+      <button class="button" onclick="loadComplaints()">Load Complaints</button>
+    </div>
+    <table id="complaintsTable"></table>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+
+async function loadComplaints(){
+  const token = localStorage.getItem('token');
+  if (!token) { 
+    document.getElementById('auth-msg').style.display = 'inline-block';
+    document.getElementById('complaintsTable').innerHTML = '';
+    return;
+  }
+  document.getElementById('auth-msg').style.display = 'none';
+
+  try {
+    const res = await fetch(API + '/complaints', {
+      headers: { 'Authorization': 'Bearer ' + token } // ADDED AUTH
+    });
+    
+    if(!res.ok){
+      document.getElementById('auth-msg').innerText = 'Access Denied. Must be logged in as Admin.';
+      document.getElementById('auth-msg').style.display = 'inline-block';
+      document.getElementById('complaintsTable').innerHTML = '';
+      return;
+    }
+
+    const rows = await res.json();
+    let html = `<tr><th>ID</th><th>Student</th><th>Room</th><th>Type</th><th>Description</th><th>Date</th><th>Status</th></tr>`;
+    rows.forEach(r => {
+      html += `<tr>
+        <td>${r.complaint_id}</td>
+        <td>${r.student_name||'-'}</td>
+        <td>${r.room_no||'-'}</td>
+        <td>${r.type}</td>
+        <td>${r.description}</td>
+        <td>${r.date||''}</td>
+        <td>${r.status||''}</td>
+      </tr>`;
+    });
+    document.getElementById('complaintsTable').innerHTML = html;
+  } catch (err) {
+    document.getElementById('complaintsTable').innerHTML = '<tr><td colspan="7">Failed to load</td></tr>';
+  }
+}
+
+document.getElementById('complaintForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('msg'); msg.style.display='none';
+  const token = localStorage.getItem('token');
+  if (!token || localStorage.getItem('role') !== 'student') { // Added role check
+    msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='You must be logged in as a student to submit.'; return; 
+  }
+  const payload = { type: document.getElementById('ctype').value.trim(), description: document.getElementById('desc').value.trim() };
+
+  try {
+    const res = await fetch(API + '/add-complaint', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'Authorization': 'Bearer ' + token},
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    msg.style.display='inline-block'; msg.className = res.ok ? 'msg ok' : 'msg err'; msg.innerText = text;
+    if (res.ok) { document.getElementById('complaintForm').reset(); loadComplaints(); }
+  } catch (err) {
+    msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='Network error';
+  }
+});
+
+loadComplaints();
+</script>
+</body>
+</html>

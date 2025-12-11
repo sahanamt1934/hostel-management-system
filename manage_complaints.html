@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Manage Complaints — Hostel</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Manage Complaints</div></div></div>
+  <nav class="nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="complaints.html">Student Submit</a>
+    <a href="admin_login.html">Admin Login</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="card" style="max-width:900px">
+    <h2>Complaint Management (Admin)</h2>
+    <p class="small">You must be logged in as an Admin to view and update complaint statuses.</p>
+    
+    <div style="margin-bottom:8px">
+      <button class="button" onclick="loadComplaints()">Load Complaints</button>
+    </div>
+    
+    <div id="msg" class="mt-8" style="display:none"></div>
+    <div id="auth-msg" class="msg err" style="display:none; margin-bottom: 12px;">Admin login required.</div>
+    
+    <table id="complaintsTable"></table>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+const STATUS_OPTIONS = ['Open', 'Processing', 'Issue Solved', 'Closed'];
+
+async function loadComplaints(){
+  const token = localStorage.getItem('token');
+  const authMsg = document.getElementById('auth-msg');
+  if (!token || localStorage.getItem('role') !== 'admin') { 
+    authMsg.innerText = 'Access Denied. Must be logged in as Admin.';
+    authMsg.style.display = 'inline-block';
+    document.getElementById('complaintsTable').innerHTML = '';
+    return;
+  }
+  authMsg.style.display = 'none';
+
+  try {
+    const res = await fetch(API + '/complaints', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    
+    if(!res.ok){
+      authMsg.innerText = 'Failed to load complaints. Check server status.';
+      authMsg.style.display = 'inline-block';
+      document.getElementById('complaintsTable').innerHTML = '';
+      return;
+    }
+
+    const rows = await res.json();
+    let html = `<tr><th>ID</th><th>Student</th><th>Room</th><th>Type</th><th>Description</th><th>Date</th><th>Status</th><th>Action</th></tr>`;
+    rows.forEach(r => {
+      // Create a dropdown for status change
+      let statusDropdown = `<select id="status-${r.complaint_id}" onchange="updateComplaintStatus(${r.complaint_id})">`;
+      STATUS_OPTIONS.forEach(option => {
+        statusDropdown += `<option value="${option}" ${r.status === option ? 'selected' : ''}>${option}</option>`;
+      });
+      statusDropdown += `</select>`;
+
+      html += `<tr>
+        <td>${r.complaint_id}</td>
+        <td>${r.student_name || '-'}</td>
+        <td>${r.room_no || '-'}</td>
+        <td>${r.type}</td>
+        <td>${r.description}</td>
+        <td>${r.date.split('T')[0] || ''}</td>
+        <td>${r.status}</td>
+        <td>${statusDropdown}</td>
+      </tr>`;
+    });
+    document.getElementById('complaintsTable').innerHTML = html;
+  } catch (err) {
+    document.getElementById('msg').style.display='inline-block';
+    document.getElementById('msg').className='msg err';
+    document.getElementById('msg').innerText = 'Failed to load complaints: Network error.';
+    document.getElementById('complaintsTable').innerHTML = '<tr><td colspan="8">Failed to load</td></tr>';
+  }
+}
+
+async function updateComplaintStatus(complaintId) {
+  const token = localStorage.getItem('token');
+  const newStatus = document.getElementById(`status-${complaintId}`).value;
+  const msg = document.getElementById('msg'); msg.style.display='none';
+
+  if (!token || localStorage.getItem('role') !== 'admin') {
+    alert('Admin login required to update status.');
+    return;
+  }
+
+  try {
+    const res = await fetch(API + '/complaint/' + complaintId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ status: newStatus })
+    });
+    
+    const text = await res.text();
+    msg.style.display='inline-block'; 
+    msg.className = res.ok ? 'msg ok' : 'msg err'; 
+    msg.innerText = res.ok ? `Complaint ${complaintId} status updated to ${newStatus}.` : text;
+
+    // Reload data to reflect status change on the table text
+    if (res.ok) {
+        // Simple update without full reload for smoother UX
+        const selectedElement = document.getElementById(`status-${complaintId}`);
+        const statusColumn = selectedElement.closest('tr').children[6]; // Assuming Status is the 7th cell (index 6)
+        statusColumn.innerText = newStatus;
+    }
+
+  } catch (err) {
+    msg.style.display='inline-block';
+    msg.className='msg err'; 
+    msg.innerText='Network error during update.';
+  }
+}
+
+loadComplaints();
+</script>
+</body>
+</html>

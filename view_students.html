@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>View Students — Hostel</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Students</div></div></div>
+  <nav class="nav"><a href="dashboard.html">Dashboard</a><a href="admin_login.html">Admin Login</a></nav>
+</header>
+
+<div class="container">
+  <div class="card">
+    <h2>Students (Admin View)</h2>
+    <p class="small msg err" id="auth-msg-students" style="display:none">Admin login required to view and manage students.</p>
+    <div class="row mb-6">
+      <div class="col">
+        <button class="button" onclick="loadStudents()">Load Students</button>
+        <button class="button secondary" onclick="loadRooms()">Load Rooms</button>
+      </div>
+      <div id="msg" style="text-align:right"></div>
+    </div>
+
+    <table id="studentsTable"></table>
+    <h3 style="margin-top:20px">Room snapshot</h3>
+    <table id="roomsTable" style="width:60%"></table>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+
+async function loadStudents(){
+  const token = localStorage.getItem('token');
+  const authMsg = document.getElementById('auth-msg-students');
+  if (!token || localStorage.getItem('role') !== 'admin') { 
+    authMsg.innerText = 'Admin login required to view and manage students.';
+    authMsg.style.display = 'inline-block';
+    document.getElementById('studentsTable').innerHTML = '';
+    return;
+  }
+  authMsg.style.display = 'none';
+
+  try {
+    const res = await fetch(API + '/students', {
+      headers: { 'Authorization': 'Bearer ' + token } // ADDED AUTH
+    });
+
+    if(!res.ok){
+      authMsg.innerText = 'Access Denied. Must be logged in as Admin.';
+      authMsg.style.display = 'inline-block';
+      document.getElementById('studentsTable').innerHTML = '';
+      return;
+    }
+
+    const rows = await res.json();
+    let html = `<tr><th>ID</th><th>Name</th><th>Phone</th><th>Room No</th><th>Admission</th><th>Action</th></tr>`;
+    rows.forEach(s => {
+      html += `<tr>
+        <td>${s.student_id}</td><td>${s.name}</td><td>${s.phone}</td><td>${s.room_no||''}</td><td>${s.admission_date||''}</td>
+        <td><button class="button ghost" onclick="deleteStudent(${s.student_id})">Delete</button></td>
+      </tr>`;
+    });
+    document.getElementById('studentsTable').innerHTML = html;
+  } catch (err) {
+    document.getElementById('msg').innerText = 'Failed to load students';
+  }
+}
+
+async function loadRooms(){
+  // Room data is generally less sensitive, so this remains public access
+  try {
+    const res = await fetch(API + '/rooms');
+    const rooms = await res.json();
+    let html = `<tr><th>Room No</th><th>Capacity</th><th>Occupied</th><th>Status</th></tr>`;
+    rooms.forEach(r => html += `<tr><td>${r.room_no}</td><td>${r.capacity}</td><td>${r.occupied}</td><td>${r.status}</td></tr>`);
+    document.getElementById('roomsTable').innerHTML = html;
+  } catch (err) { console.error(err); }
+}
+
+async function deleteStudent(id){
+  if(!confirm('Delete student ID ' + id + ' ?')) return;
+  const token = localStorage.getItem('token');
+  // Role check is enforced by the backend but checked here for better UX
+  if(!token || localStorage.getItem('role') !== 'admin'){ alert('You must be logged in as admin to delete'); return; } 
+  try {
+    const res = await fetch(API + '/student/' + id, { method:'DELETE', headers:{ 'Authorization':'Bearer ' + token }});
+    const text = await res.text();
+    document.getElementById('msg').innerText = text;
+    loadStudents(); loadRooms();
+  } catch (err) { document.getElementById('msg').innerText = 'Delete failed'; }
+}
+
+loadStudents(); loadRooms();
+</script>
+</body>
+</html>

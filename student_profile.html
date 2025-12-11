@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Student Profile — Hostel</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Student Profile</div></div></div>
+  <nav class="nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="complaints.html">Complaints</a>
+    <a href="student_login.html">Logout</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="card" style="max-width:480px;">
+    <h2>Change Password</h2>
+    <p class="small">You must be logged in as a student to change your password.</p>
+
+    <form id="passwordForm">
+      <label for="oldPassword">Old Password</label>
+      <input id="oldPassword" type="password" required>
+
+      <label for="newPassword">New Password</label>
+      <input id="newPassword" type="password" required>
+
+      <div style="margin-top:12px;">
+        <button class="button" type="submit">Update Password</button>
+      </div>
+    </form>
+
+    <div id="msg" class="mt-8" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+
+document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('msg'); msg.style.display='none';
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+  
+  if (!token || role !== 'student') { 
+    msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='You must be logged in as a student.'; 
+    return; 
+  }
+
+  const payload = {
+    oldPassword: document.getElementById('oldPassword').value,
+    newPassword: document.getElementById('newPassword').value
+  };
+
+  try {
+    const res = await fetch(API + '/student/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    msg.style.display='inline-block'; msg.className = res.ok ? 'msg ok' : 'msg err'; msg.innerText = text;
+    if (res.ok) document.getElementById('passwordForm').reset();
+  } catch (err) {
+    msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='Network error';
+  }
+});
+</script>
+</body>
+</html>

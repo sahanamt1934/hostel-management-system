@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Room Details</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Room Details</div></div></div>
+  <nav class="nav"><a href="dashboard.html">Dashboard</a><a href="add_room.html">Add Room</a></nav> </header>
+
+<div class="container">
+  <div class="card">
+    <h2>Room Details</h2>
+    <p class="small">This list is public. Use the "Add Room" link for management.</p>
+    <button class="button" onclick="loadRooms()">Load Rooms</button>
+    <table id="roomsTable" style="margin-top:12px"></table>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+async function loadRooms(){
+  try {
+    const res = await fetch(API + '/rooms');
+    const rows = await res.json();
+    let html = `<tr><th>Room No</th><th>Capacity</th><th>Occupied</th><th>Status</th></tr>`;
+    rows.forEach(r => html += `<tr><td>${r.room_no}</td><td>${r.capacity}</td><td>${r.occupied}</td><td>${r.status}</td></tr>`);
+    document.getElementById('roomsTable').innerHTML = html;
+  } catch (err) {
+    document.getElementById('roomsTable').innerHTML = '<tr><td colspan="4">Failed to load</td></tr>';
+  }
+}
+loadRooms();
+</script>
+</body>
+</html>

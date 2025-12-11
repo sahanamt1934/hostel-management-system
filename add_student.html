@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Add Student — Hostel</title>
+  <link rel="stylesheet" href="styles.css">
+  
+  <style>
+    .modal {
+      display: none; /* Must start hidden */
+      position: fixed; 
+      z-index: 100;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      overflow: auto; 
+      background-color: rgba(0,0,0,0.4); 
+      backdrop-filter: blur(3px);
+      align-items: center; justify-content: center;
+    }
+    .modal-content {
+      background-color: var(--card);
+      margin: 15% auto;
+      padding: 30px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      width: 80%; /* Medium screen size */
+      max-width: 400px; /* Medium screen size */
+      text-align: center;
+      animation: fadeIn 0.3s;
+    }
+    .modal-content h3 {
+      color: var(--success);
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+    .close-btn {
+      color: var(--muted);
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(-20px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+  </style>
+</head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Add Student</div></div></div>
+  <nav class="nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="admin_login.html">Admin Login</a>
+    <a href="student_login.html">Student Login</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="card" style="max-width:720px;">
+    <h2>Add Student (Admin)</h2>
+    <p class="small">You must be logged in as admin. If not, please <a href="admin_login.html">login</a>.</p>
+
+    <form id="studentForm">
+      <label for="name">Name</label>
+      <input id="name" type="text" placeholder="Full name" required>
+
+      <label for="phone">Phone</label>
+      <input id="phone" type="text" placeholder="Phone number" required>
+      
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="Initial Password" required>
+      
+      <label for="room_select">Room</label>
+      <select id="room_select" required><option>Loading...</option></select>
+
+      <div style="margin-top:12px;">
+        <button class="button" type="submit">Add Student</button>
+        <button type="button" class="button secondary" onclick="loadRooms()">Reload Rooms</button>
+      </div>
+    </form>
+
+    <div id="msg" class="mt-8" style="display:none"></div>
+  </div>
+</div>
+
+<div id="successModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="document.getElementById('successModal').style.display='none';">&times;</span>
+    <h3 id="modalTitle">✅ Success!</h3>
+    <p id="modalMessage"></p>
+    <div style="margin-top:20px;">
+      <a class="button" href="view_students.html">View Students</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+const modal = document.getElementById('successModal');
+const modalMessage = document.getElementById('modalMessage');
+
+async function loadRooms(){
+  const sel = document.getElementById('room_select');
+  sel.innerHTML = '<option>Loading...</option>';
+  try {
+    const res = await fetch(API + '/rooms');
+    const rooms = await res.json();
+    sel.innerHTML = '<option value="">-- Select Room --</option>';
+    rooms.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.room_id;
+      // Displays capacity and occupancy
+      opt.text = `${r.room_no} (cap:${r.capacity}, occ:${r.occupied})`;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    sel.innerHTML = '<option>Failed to load</option>';
+  }
+}
+
+document.getElementById('studentForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('msg'); msg.style.display='none';
+  const token = localStorage.getItem('token');
+  if (!token) { msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='You must be logged in as admin.'; return; }
+
+  const studentName = document.getElementById('name').value.trim(); // Capture name for modal
+  const payload = {
+    name: studentName,
+    phone: document.getElementById('phone').value.trim(),
+    password: document.getElementById('password').value, 
+    room_id: document.getElementById('room_select').value
+  };
+  
+  // Get the selected room number for the modal message
+  const roomSelect = document.getElementById('room_select');
+  // Extracts the room number (e.g., 'B201') from the full option text
+  const selectedRoomText = roomSelect.options[roomSelect.selectedIndex].text.split(' ')[0]; 
+
+  try {
+    const res = await fetch(API + '/add-student', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+
+    if (res.ok) {
+      document.getElementById('studentForm').reset();
+      loadRooms();
+      
+      // CRITICAL SECTION 3: THE JAVASCRIPT TRIGGER
+      modalMessage.innerHTML = `Student <strong>${studentName}</strong> has been successfully assigned to <strong>Room ${selectedRoomText}</strong>.`;
+      modal.style.display = 'flex'; // This line shows the modal
+      
+    } else {
+      // Show errors in the small box
+      msg.style.display='inline-block'; msg.className='msg err'; msg.innerText = text;
+    }
+  } catch (err) {
+    msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='Network error';
+  }
+});
+
+// Close modal when user clicks outside of it
+window.onclick = function(event) {
+  if (event.target == modal) {
+    modal.style.display = 'none';
+  }
+}
+
+loadRooms();
+</script>
+</body>
+</html>

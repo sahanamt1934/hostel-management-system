@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Student Login — Hostel</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Student Login</div></div></div>
+  <nav class="nav"><a href="dashboard.html">Dashboard</a></nav>
+</header>
+
+<div class="container">
+  <div class="card" style="max-width:480px">
+    <h2>Student Login</h2>
+    <p class="small">Enter the student ID and the password set for the student account.</p>
+
+    <form id="loginForm">
+      <label>Student ID</label>
+      <input id="student_id" type="number" placeholder="e.g. 1" required>
+      <label>Password</label>
+      <input id="password" type="password" placeholder="••••••" required>
+
+      <div style="margin-top:12px;">
+        <button class="button" type="submit">Login</button>
+        <button type="button" class="button secondary" onclick="logout()">Logout</button>
+      </div>
+    </form>
+
+    <div id="msg" class="mt-8" style="display:none"></div>
+    <div id="status" class="mt-8 small"></div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+
+function showStatus(){
+  const token = localStorage.getItem('token');
+  if(!token){ document.getElementById('status').innerText = 'Not logged in.'; return; }
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    document.getElementById('status').innerText = `Logged in as ${payload.name || payload.student_id} (role: ${payload.role})`;
+  } catch(e){
+    document.getElementById('status').innerText = 'Logged in';
+  }
+}
+
+function logout(){
+  localStorage.removeItem('token');
+  localStorage.removeItem('role');
+  showStatus();
+  const msg = document.getElementById('msg'); msg.style.display='inline-block'; msg.className='msg ok'; msg.innerText='Logged out';
+}
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const student_id = document.getElementById('student_id').value;
+  const password = document.getElementById('password').value;
+  const msg = document.getElementById('msg'); msg.style.display='none';
+  try {
+    const res = await fetch(API + '/student/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ student_id, password })
+    });
+    if(!res.ok){
+      const t = await res.text();
+      msg.style.display='inline-block'; msg.className='msg err'; msg.innerText = t;
+      return;
+    }
+    const data = await res.json();
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('role', data.role);
+    msg.style.display='inline-block'; msg.className='msg ok'; msg.innerText = 'Login successful — redirecting to complaints...';
+    setTimeout(()=> window.location.href = 'complaints.html', 700);
+  } catch(err){
+    msg.style.display='inline-block'; msg.className='msg err'; msg.innerText = 'Network error';
+    console.error(err);
+  }
+});
+
+showStatus();
+</script>
+</body>
+</html>

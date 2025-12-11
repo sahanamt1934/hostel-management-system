@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Dashboard — Hostel</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Dashboard</div></div></div>
+  <nav class="nav">
+    <a href="add_student.html">Add Student</a>
+    <a href="view_students.html">View Students</a>
+    <a href="view_rooms.html">Rooms</a>
+    <a href="complaints.html">Complaints</a>
+    <a href="manage_complaints.html">Manage Complaints</a>
+    <a href="admin_login.html">Admin Login</a>
+    <a href="student_login.html">Student Login</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="card">
+    <h1>Hostel Management Dashboard</h1>
+    <p class="small">Quick links and status</p>
+
+    <div id="status" style="margin-top:12px"></div>
+
+    <div style="margin-top:16px;">
+      <a class="button" href="add_student.html">➕ Add Student</a>
+      <a class="button secondary" href="view_students.html">👥 View Students</a>
+      <a class="button secondary" href="view_rooms.html">🏠 View Rooms</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+function showStatus(){
+  const token = localStorage.getItem('token');
+  const status = document.getElementById('status');
+  if(!token) { status.innerHTML = '<div class="small">Not logged in. <a href="admin_login.html">Admin</a> | <a href="student_login.html">Student</a></div>'; return; }
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    status.innerHTML = `<div class="small">Logged in as <strong>${payload.username || payload.name}</strong> (role: ${payload.role}) <button class="button ghost" onclick="logout()">Logout</button></div>`;
+  } catch (e) { status.innerText = 'Logged in'; }
+}
+function logout(){ localStorage.removeItem('token'); localStorage.removeItem('role'); showStatus(); }
+showStatus();
+</script>
+</body>
+</html>

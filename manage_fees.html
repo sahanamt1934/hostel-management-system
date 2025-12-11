@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Fee Management — Hostel</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="container header">
+  <div class="brand"><div class="logo"></div><div><h1>Hostel Management</h1><div class="small">Fee Management</div></div></div>
+  <nav class="nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="view_students.html">Students</a>
+    <a href="admin_login.html">Admin Login</a>
+  </nav>
+</header>
+
+<div class="container">
+  <div class="card" style="max-width:800px;">
+    <h2>Record Fee Payment (Admin)</h2>
+    <p class="small">Enter details to record a fee payment for a student.</p>
+
+    <form id="feeForm">
+      <label for="student_id">Student ID</label>
+      <input id="student_id" type="number" placeholder="Enter Student ID" required>
+
+      <label for="amount_paid">Amount Paid</label>
+      <input id="amount_paid" type="number" step="0.01" placeholder="e.g. 5000.00" required>
+      
+      <label for="description">Description (Optional)</label>
+      <input id="description" type="text" placeholder="e.g. Monthly Fee - May">
+
+      <div style="margin-top:12px;">
+        <button class="button" type="submit">Record Payment</button>
+      </div>
+    </form>
+    <div id="msg" class="mt-8" style="display:none"></div>
+  </div>
+
+  <div class="card" style="max-width:800px; margin-top: 20px;">
+    <h2>All Fee Records (Admin View)</h2>
+    <div style="margin-bottom:8px">
+      <button class="button secondary" onclick="loadFeeRecords()">Load All Payments</button>
+    </div>
+    <div id="auth-msg-fees" class="msg err" style="display:none; margin-bottom: 12px;">Admin login required.</div>
+    <table id="feeTable"></table>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:5000';
+
+async function loadFeeRecords() {
+  const token = localStorage.getItem('token');
+  const authMsg = document.getElementById('auth-msg-fees');
+  if (!token || localStorage.getItem('role') !== 'admin') { 
+    authMsg.innerText = 'Admin login required to view fee records.';
+    authMsg.style.display = 'inline-block';
+    document.getElementById('feeTable').innerHTML = '';
+    return;
+  }
+  authMsg.style.display = 'none';
+
+  try {
+    const res = await fetch(API + '/fees/all', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+
+    if(!res.ok){
+      const t = await res.text();
+      authMsg.innerText = `Failed to load: ${t}`;
+      authMsg.style.display = 'inline-block';
+      document.getElementById('feeTable').innerHTML = '';
+      return;
+    }
+
+    const rows = await res.json();
+    let html = `<tr><th>ID</th><th>Student Name</th><th>Student ID</th><th>Amount</th><th>Date</th><th>Description</th></tr>`;
+    rows.forEach(r => {
+      html += `<tr>
+        <td>${r.fee_id}</td>
+        <td>${r.student_name}</td>
+        <td>${r.student_id}</td>
+        <td>₹ ${r.amount_paid}</td>
+        <td>${r.payment_date.split('T')[0]}</td>
+        <td>${r.description || '-'}</td>
+      </tr>`;
+    });
+    document.getElementById('feeTable').innerHTML = html;
+  } catch (err) {
+    document.getElementById('feeTable').innerHTML = '<tr><td colspan="6">Failed to load</td></tr>';
+  }
+}
+
+
+document.getElementById('feeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = document.getElementById('msg'); msg.style.display='none';
+  const token = localStorage.getItem('token');
+  if (!token || localStorage.getItem('role') !== 'admin') { 
+    msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='You must be logged in as admin.'; 
+    return; 
+  }
+
+  const payload = {
+    student_id: document.getElementById('student_id').value.trim(),
+    amount_paid: document.getElementById('amount_paid').value.trim(),
+    description: document.getElementById('description').value.trim()
+  };
+
+  try {
+    const res = await fetch(API + '/add-fee', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(payload)
+    });
+    const text = await res.text();
+    msg.style.display='inline-block'; msg.className = res.ok ? 'msg ok' : 'msg err'; msg.innerText = text;
+    if (res.ok) { 
+        document.getElementById('feeForm').reset();
+        loadFeeRecords();
+    }
+  } catch (err) {
+    msg.style.display='inline-block'; msg.className='msg err'; msg.innerText='Network error';
+  }
+});
+
+loadFeeRecords(); // Load records on page load
+</script>
+</body>
+</html>
